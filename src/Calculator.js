@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import PreviousCal from "./PreviousCal";
 
 const Calculator = () => {
   // create a state variable to keep track of what number/operater was clicked
@@ -8,24 +9,28 @@ const Calculator = () => {
   // when response returns, display the calculation on the screen
   const [buttonInput, setButtonInput] = useState(0);
   const [calcatationId, setCalculationId] = useState("");
+  const [previousCal, setPreviousCal] = useState({});
 
+  const base_url = "https://89bcad46d253.ngrok.io/calculations";
   async function createCalculation() {
     try {
-      const response = await fetch(
-        "https://d5adb00a10e7.ngrok.io/calculations",
-        {
-          method: "POST",
-        }
-      );
+      const response = await fetch(base_url, {
+        method: "POST",
+      });
       const data = await response.json();
       setCalculationId(data.id);
+      //   const new_previousCal = previousCal;
+      //   new_previousCal[data.id] = [];
+      //   setPreviousCal(new_previousCal);
     } catch (error) {
       console.log("error", error);
     }
   }
 
   useEffect(() => {
-    createCalculation();
+    if (!calcatationId) {
+      createCalculation();
+    }
   }, []);
 
   async function sendToken(buttonInput) {
@@ -37,19 +42,29 @@ const Calculator = () => {
     } else {
       payload = { type: "operator", value: buttonInput };
     }
-
-    console.log("payload", payload);
     try {
-      const response = await fetch(
-        `https://d5adb00a10e7.ngrok.io/calculations/${calcatationId}/tokens`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(payload),
-        }
-      );
+      const response = await fetch(`${base_url}/${calcatationId}/tokens`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+    } catch (error) {
+      console.log("error", error);
+    }
+  }
+  async function getPreviousCal(id) {
+    try {
+      const response = await fetch(`${base_url}/${id}`);
+      const data = await response.json();
+      let current_token = [];
+      for (let token of data.tokens) {
+        current_token.push(token.value);
+      }
+      let new_tokens = previousCal;
+      new_tokens[id] = current_token;
+      setPreviousCal(new_tokens);
     } catch (error) {
       console.log("error", error);
     }
@@ -57,17 +72,17 @@ const Calculator = () => {
 
   async function getResult() {
     try {
-      const response = await fetch(
-        `https://d5adb00a10e7.ngrok.io/calculations/${calcatationId}/result`
-      );
+      const response = await fetch(`${base_url}/${calcatationId}/result`);
       const data = await response.json();
 
       setButtonInput(data.result);
       createCalculation();
+      getPreviousCal(calcatationId);
     } catch (error) {
       console.log(error);
     }
   }
+  console.log("previousCal", previousCal);
 
   return (
     <div>
@@ -96,6 +111,7 @@ const Calculator = () => {
           <button onClick={() => getResult()}>=</button>
         </div>
       </div>
+      <PreviousCal previous={previousCal} baseUrl={base_url} />
     </div>
   );
 };
